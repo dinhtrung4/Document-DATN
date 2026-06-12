@@ -47,6 +47,14 @@ CREATE TYPE memory_status AS ENUM ('new', 'learning', 'reviewing', 'mastered');
 
 ## 3. ERD tong quan
 
+Neu can xem bieu do truc quan tren dbdiagram.io, su dung file:
+
+```text
+docs/dbdiagram-erd.dbml
+```
+
+Copy noi dung file nay vao dbdiagram.io de render ERD day du voi enum, bang, khoa ngoai va index chinh.
+
 ```mermaid
 erDiagram
     USERS ||--o| LEARNER_PROFILES : has
@@ -189,7 +197,7 @@ erDiagram
         numeric start_time
         numeric end_time
         varchar speaker
-        text text
+        text segment_text
         integer order_index
     }
 
