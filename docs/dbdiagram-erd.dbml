@@ -204,6 +204,7 @@ Table transcript_segments {
 
 Table writing_prompts {
   id uuid [pk, default: `gen_random_uuid()`]
+  source_material_id uuid [unique]
   task_type writing_task_type [not null]
   prompt_text text [not null]
   chart_image_url text
@@ -219,11 +220,12 @@ Table writing_prompts {
     (topic_id, level_id) [name: "idx_writing_prompts_topic_level"]
   }
 
-  Note: "Stores Writing Task 1/Task 2 prompts."
+  Note: "Stores Writing Task 1/Task 2 prompts. Optional source_material_id keeps traceability to source data."
 }
 
 Table speaking_prompts {
   id uuid [pk, default: `gen_random_uuid()`]
+  source_material_id uuid [unique]
   part speaking_part [not null]
   topic_id uuid
   prompt_text text [not null]
@@ -238,7 +240,7 @@ Table speaking_prompts {
     (topic_id, level_id) [name: "idx_speaking_prompts_topic_level"]
   }
 
-  Note: "Stores IELTS Speaking Part 1 questions, Part 2 cue cards, and Part 3 prompts."
+  Note: "Stores IELTS Speaking Part 1 questions, Part 2 cue cards, and Part 3 prompts. Optional source_material_id keeps traceability to source data."
 }
 
 Table prompt_templates {
@@ -443,7 +445,8 @@ Table ai_grading_results {
   id uuid [pk, default: `gen_random_uuid()`]
   user_id uuid [not null]
   submission_type submission_type [not null]
-  submission_id uuid [not null]
+  writing_submission_id uuid
+  speaking_turn_id uuid
   overall_band numeric(3,1)
   criterion_scores jsonb
   strengths jsonb
@@ -459,14 +462,15 @@ Table ai_grading_results {
 
   indexes {
     (user_id, created_at) [name: "idx_ai_grading_user"]
-    (submission_type, submission_id) [name: "idx_ai_grading_submission"]
+    writing_submission_id [name: "idx_ai_grading_writing_submission"]
+    speaking_turn_id [name: "idx_ai_grading_speaking_turn"]
   }
 
   Note: '''
     Stores AI grading results for Writing and Speaking.
-    submission_id is polymorphic:
-    - writing -> writing_submissions.id
-    - speaking -> speaking_turns.id
+    Use writing_submission_id for Writing grading.
+    Use speaking_turn_id for Speaking grading.
+    Add a database CHECK constraint so exactly one of the two columns is not null.
   '''
 }
 
@@ -607,9 +611,11 @@ Ref: transcript_segments.listening_material_id > listening_materials.id [delete:
 
 Ref: writing_prompts.topic_id > topics.id [delete: set null]
 Ref: writing_prompts.level_id > levels.id [delete: set null]
+Ref: writing_prompts.source_material_id - source_materials.id [delete: set null]
 
 Ref: speaking_prompts.topic_id > topics.id [delete: set null]
 Ref: speaking_prompts.level_id > levels.id [delete: set null]
+Ref: speaking_prompts.source_material_id - source_materials.id [delete: set null]
 
 // AI generation relationships
 Ref: prompt_templates.id < ai_generation_requests.prompt_template_id [delete: set null]
@@ -641,6 +647,8 @@ Ref: speaking_turns.speaking_prompt_id > speaking_prompts.id [delete: set null]
 // AI grading relationships
 Ref: ai_grading_results.user_id > users.id [delete: cascade]
 Ref: ai_grading_results.prompt_template_id > prompt_templates.id [delete: set null]
+Ref: ai_grading_results.writing_submission_id > writing_submissions.id [delete: cascade]
+Ref: ai_grading_results.speaking_turn_id > speaking_turns.id [delete: cascade]
 
 // Vocabulary relationships
 Ref: vocabulary_items.topic_id > topics.id [delete: set null]

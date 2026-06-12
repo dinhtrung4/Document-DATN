@@ -829,7 +829,8 @@ Truong du lieu goi y:
 - id.
 - user_id.
 - submission_type: writing/speaking.
-- submission_id.
+- writing_submission_id: dung khi cham Writing.
+- speaking_turn_id: dung khi cham Speaking.
 - overall_band.
 - criterion_scores_json.
 - strengths_json.

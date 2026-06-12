@@ -55,6 +55,19 @@ docs/dbdiagram-erd.dbml
 
 Copy noi dung file nay vao dbdiagram.io de render ERD day du voi enum, bang, khoa ngoai va index chinh.
 
+### 3.1. Ket qua ra soat quan he
+
+Sau khi ra soat lai de phu hop voi PostgreSQL va Spring Data JPA, cac dieu chinh/ket luan quan trong:
+
+- Quan he `users` - `learner_profiles` la 1-1, vi moi learner chi co mot ho so hoc tap chinh.
+- `source_materials` la bang truy vet du lieu goc. `reading_passages`, `listening_materials`, `writing_prompts`, `speaking_prompts` co the lien ket 1-1 tuy chon voi `source_materials`.
+- `generated_exercises` - `generated_questions` la 1-n, vi mot bai luyen gom nhieu cau hoi AI tao.
+- `practice_attempts` - `user_answers` la 1-n, dung cho Reading/Listening/Vocabulary/Grammar.
+- Writing va Speaking khong dung `practice_attempts` lam bang chinh, vi can luu essay/audio/transcript va cham theo rubric rieng.
+- `speaking_sessions` - `speaking_turns` la 1-n, phu hop voi Speaking Part 1/2/3 va follow-up question.
+- `ai_grading_results` khong dung `submission_id` polymorphic. Thay vao do dung `writing_submission_id` va `speaking_turn_id` de co FK that va map JPA ro rang.
+- Cac truong linh hoat nhu options, correct answer, rubric scores, grammar errors nen dung `jsonb`, nhung cac truong hay filter nhu skill/topic/level/status nen tach thanh cot rieng.
+
 ```mermaid
 erDiagram
     USERS ||--o| LEARNER_PROFILES : has
@@ -82,6 +95,8 @@ erDiagram
 
     SOURCE_MATERIALS ||--o| READING_PASSAGES : reading_source
     SOURCE_MATERIALS ||--o| LISTENING_MATERIALS : listening_source
+    SOURCE_MATERIALS ||--o| WRITING_PROMPTS : writing_source
+    SOURCE_MATERIALS ||--o| SPEAKING_PROMPTS : speaking_source
     SOURCE_MATERIALS ||--o{ AI_GENERATION_REQUESTS : used_by
     SOURCE_MATERIALS ||--o{ GENERATED_EXERCISES : generates
 
@@ -203,6 +218,7 @@ erDiagram
 
     WRITING_PROMPTS {
         uuid id PK
+        uuid source_material_id FK
         writing_task_type task_type
         text prompt_text
         text chart_image_url
@@ -214,6 +230,7 @@ erDiagram
 
     SPEAKING_PROMPTS {
         uuid id PK
+        uuid source_material_id FK
         speaking_part part
         uuid topic_id FK
         text prompt_text
@@ -324,7 +341,8 @@ erDiagram
         uuid id PK
         uuid user_id FK
         submission_type submission_type
-        uuid submission_id
+        uuid writing_submission_id FK
+        uuid speaking_turn_id FK
         numeric overall_band
         jsonb criterion_scores
         jsonb strengths
@@ -694,6 +712,7 @@ writing_prompts
 
 `writing_prompts`:
 
+- Source material id neu de bai duoc tao/quan ly tu `source_materials`.
 - Task type: Task 1/Task 2.
 - Prompt text.
 - Chart image URL neu Task 1.
@@ -794,6 +813,7 @@ Vi vay:
 
 `speaking_prompts`:
 
+- Source material id neu cau hoi/cue card duoc tao/quan ly tu `source_materials`.
 - Part.
 - Topic.
 - Prompt text.
@@ -964,17 +984,35 @@ Matching:
 
 Bang nay dung chung cho Writing va Speaking.
 
-Thiet ke co `submission_type` va `submission_id` de tham chieu den:
+Thiet ke nen dung FK ro rang thay vi mot `submission_id` polymorphic:
 
-- `writing_submissions.id`
-- `speaking_turns.id`
+- `writing_submission_id` -> `writing_submissions.id`
+- `speaking_turn_id` -> `speaking_turns.id`
 
-Neu muon rang buoc database chat che hon, co the tach thanh:
+Them check constraint de dam bao moi grading result chi thuoc mot loai submission:
+
+```sql
+ALTER TABLE ai_grading_results
+ADD CONSTRAINT ai_grading_one_submission_check
+CHECK (
+    (submission_type = 'writing' AND writing_submission_id IS NOT NULL AND speaking_turn_id IS NULL)
+    OR
+    (submission_type = 'speaking' AND speaking_turn_id IS NOT NULL AND writing_submission_id IS NULL)
+);
+```
+
+Cach nay tot hon cho PostgreSQL va Spring Data JPA vi:
+
+- Database enforce duoc khoa ngoai that.
+- Entity co quan he `@ManyToOne` ro rang.
+- Tranh loi tham chieu nham id Writing sang Speaking.
+
+Neu ve sau can tach domain chat hon, co the tach thanh:
 
 - `writing_grading_results`
 - `speaking_grading_results`
 
-Phien ban MVP co the dung mot bang chung de don gian hon.
+Phien ban MVP van co the dung mot bang chung `ai_grading_results` voi hai FK nullable nhu tren.
 
 ## 9.2. `learning_recommendations`
 
@@ -1028,6 +1066,8 @@ CREATE INDEX idx_vocab_progress_review ON user_vocabulary_progress(user_id, next
 
 CREATE INDEX idx_grammar_level ON grammar_topics(level_id);
 CREATE INDEX idx_ai_grading_user ON ai_grading_results(user_id, created_at DESC);
+CREATE INDEX idx_ai_grading_writing_submission ON ai_grading_results(writing_submission_id);
+CREATE INDEX idx_ai_grading_speaking_turn ON ai_grading_results(speaking_turn_id);
 ```
 
 ### 10.3. GIN index cho JSONB neu can query
@@ -1048,6 +1088,10 @@ ON learning_recommendations USING gin(recommended_items);
 ### 11.1. Source material -> AI-generated content
 
 ```text
+source_materials 1 - 0..1 reading_passages
+source_materials 1 - 0..1 listening_materials
+source_materials 1 - 0..1 writing_prompts
+source_materials 1 - 0..1 speaking_prompts
 source_materials 1 - n ai_generation_requests
 source_materials 1 - n generated_exercises
 generated_exercises 1 - n generated_questions
@@ -1055,6 +1099,8 @@ generated_exercises 1 - n generated_questions
 
 Y nghia:
 
+- `source_materials` la lop truy vet nguon noi dung goc.
+- Cac bang skill-specific luu truong rieng cua tung ky nang.
 - Mot noi dung goc co the sinh nhieu bai tap.
 - Mot bai tap gom nhieu cau hoi.
 - Moi cau hoi co dap an va giai thich.
@@ -1197,6 +1243,12 @@ Co the tach rieng khi he thong lon hon va can toi uu sau.
 ### 13.3. Co nen dung mot bang chung cho AI grading?
 
 Co the dung `ai_grading_results` chung cho MVP.
+
+Nen tranh thiet ke `submission_id` polymorphic vi PostgreSQL khong enforce duoc FK. Thay vao do dung:
+
+- `writing_submission_id`
+- `speaking_turn_id`
+- check constraint dam bao chi mot cot co gia tri theo `submission_type`
 
 Neu ve sau can rang buoc chat hon, tach thanh:
 
