@@ -1,5 +1,11 @@
 # Tong hop cong nghe, model, thu vien, API va cach trien khai
 
+Tai lieu lien quan den cham diem theo IELTS rubric:
+
+```text
+docs/rubric-grading-design.md
+```
+
 ## 1. Kien truc tong the duoc chot
 
 Kien truc nen dung:

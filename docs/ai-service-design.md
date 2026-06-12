@@ -4,6 +4,12 @@
 
 Tai lieu nay mo ta huong trien khai phan AI cho he thong hoc tieng Anh va luyen thi IELTS.
 
+Phan cham diem chi tiet theo IELTS rubric duoc mo ta rieng tai:
+
+```text
+docs/rubric-grading-design.md
+```
+
 Muc tieu cua AI:
 
 - Tao cau hoi, dap an va giai thich tu du lieu goc trong database.
