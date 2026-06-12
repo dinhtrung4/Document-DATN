@@ -19,6 +19,7 @@ Tai lieu nay tiep noi cac tai lieu:
 - `docs/database-design.md`
 - `docs/dbdiagram-erd.dbml`
 - `docs/springboot-entities.md`
+- `docs/ai-service-design.md`
 
 ## 2. Dinh huong chon cong nghe
 
