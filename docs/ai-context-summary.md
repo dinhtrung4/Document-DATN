@@ -248,6 +248,28 @@ Advanced:
 - Optional reviewer model.
 - Calibration dataset.
 
+Criterion technology choices:
+
+- Writing Task Response/Achievement: strong LLM API.
+- Writing Coherence/Cohesion: strong LLM API + paragraph/linking stats optional.
+- Writing Lexical Resource: strong LLM API + spaCy/textstat/topic vocabulary signals optional.
+- Writing Grammar Range/Accuracy: LanguageTool precheck + strong LLM API.
+- Speaking Fluency/Coherence: faster-whisper segments/audio metrics + strong LLM API.
+- Speaking Lexical Resource: strong LLM API + topic vocabulary signals optional.
+- Speaking Grammar Range/Accuracy: LanguageTool + strong LLM API.
+- Speaking Pronunciation: speech assessment API such as Azure Speech Assessment for real scoring; transcript-only LLM is limited-confidence fallback.
+
+MVP grading:
+
+- Use one strong LLM API call to return all criterion scores.
+- Backend computes/checks overall.
+- Use local helper libraries only as signals.
+
+Advanced grading:
+
+- Multi-pass criterion-specific LLM calls.
+- Speech assessment API for pronunciation.
+
 ## 8. Personalization decisions
 
 Core recommendation should not depend on AI API.

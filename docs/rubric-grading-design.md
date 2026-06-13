@@ -140,6 +140,328 @@ LLM lam:
 
 LLM khong duoc tu quyet format response.
 
+## 5.4. Chon model/API/thu vien theo tung criterion
+
+Khong phai moi criterion deu can "goi AI API rieng". Cach toi uu la:
+
+```text
+MVP:
+  1 strong LLM call -> tra diem tat ca criteria -> backend validate/tinh overall
+
+Advanced:
+  criterion-specific evaluation -> moi criterion co prompt rieng
+  chi tach call rieng khi can quality cao hon va chap nhan latency/chi phi tang
+```
+
+Ten model khong nen hard-code vao thiet ke. Nen dung model profile:
+
+```text
+strong_llm:
+  Dung cho rubric grading can judgement chat luong cao.
+  Vi du provider: OpenAI GPT-4-class, Claude Sonnet-class, Gemini Pro-class, hoac latest equivalent.
+
+standard_llm:
+  Dung cho generation chat luong kha.
+
+cheap_fast_llm:
+  Dung cho feedback text/recommendation text/task don gian.
+
+local_llm:
+  Dung cho draft/offline/demo, khong nen la grading source chinh neu can diem sat rubric.
+
+speech_assessment_api:
+  Dung cho pronunciation scoring that su.
+```
+
+## 5.5. Writing criterion -> nen dung gi?
+
+| Criterion | Nen dung chinh | Thu vien/model phu | Co can AI API khong? | Ly do |
+| --- | --- | --- | --- | --- |
+| Task Response / Task Achievement | `strong_llm` | Rule guardrails: word count, prompt coverage checklist | Co | Can hieu de bai, muc do tra loi dung task, phat trien y, overview voi Task 1 |
+| Coherence and Cohesion | `strong_llm` | Rule/text analysis: paragraph count, linking word count, sentence order heuristic | Co | Can danh gia mach lap luan, flow, cohesion tu nhien/khong may moc |
+| Lexical Resource | `strong_llm` | spaCy, word frequency list, collocation list, textstat optional | Co, nhung co helper local | Can danh gia lexical range, word choice, collocation, paraphrase; helper local chi cung cap signal |
+| Grammatical Range and Accuracy | `strong_llm` + LanguageTool | LanguageTool, spaCy POS/dependency optional | Co, ket hop local | LanguageTool bat loi co ban; LLM danh gia muc anh huong, range cau phuc, accuracy theo rubric |
+
+### 5.5.1. Task Response / Task Achievement
+
+Best choice:
+
+```text
+strong_llm API
+```
+
+Vi sao:
+
+- Can doc de bai va bai lam.
+- Can danh gia bai co tra loi dung task khong.
+- Can xem y co du phat trien khong.
+- Writing Task 1 can danh gia overview, key features, comparison.
+- Writing Task 2 can danh gia position, arguments, examples.
+
+Khong nen chi dung local library vi library khong hieu task-level meaning tot.
+
+Optimization:
+
+- Backend tinh word_count truoc.
+- Backend truyen essay_type/task_type vao prompt.
+- LLM chi cham criterion nay dua tren rubric va evidence tu essay.
+
+### 5.5.2. Coherence and Cohesion
+
+Best choice:
+
+```text
+strong_llm API
+```
+
+Helper optional:
+
+```text
+rule-based paragraph count
+linking word count
+sentence count
+```
+
+Vi sao:
+
+- Can danh gia flow giua cac y.
+- Can biet cohesive devices dung tu nhien hay may moc.
+- Can xem paragraphing co hop ly khong.
+
+Optimization:
+
+- Backend/FastAPI co the tinh paragraph_count va sentence_count local.
+- Dua stats vao prompt de LLM co them signal.
+- Khong can goi model rieng neu MVP; trong single-pass grading van cham duoc.
+
+### 5.5.3. Lexical Resource
+
+Best choice:
+
+```text
+strong_llm API + NLP helper local
+```
+
+Helper nen dung:
+
+```text
+spaCy:
+  tokenize, POS, lemma, keyword/topic word extraction
+
+textstat or word frequency list:
+  lexical variety/readability signal
+
+custom collocation/topic vocabulary list:
+  IELTS topic vocabulary usage
+```
+
+Vi sao:
+
+- LLM tot trong danh gia word choice, paraphrase, collocation.
+- spaCy/textstat tot cho thong ke nhanh nhung khong du cham rubric.
+
+Optimization:
+
+- Tinh local:
+  - type-token ratio.
+  - repeated words.
+  - topic vocabulary count.
+  - uncommon word ratio.
+- Dua cac signal nay vao prompt.
+- LLM dua ra final lexical score.
+
+### 5.5.4. Grammatical Range and Accuracy
+
+Best choice:
+
+```text
+LanguageTool + strong_llm API
+```
+
+Helper nen dung:
+
+```text
+LanguageTool:
+  detect grammar/spelling/basic usage errors
+
+spaCy:
+  sentence structure hints, POS/dependency optional
+```
+
+Vi sao:
+
+- LanguageTool bat loi grammar co ban nhanh va re.
+- LLM danh gia grammar range, complex sentences, muc do loi anh huong meaning.
+- Chi dung LanguageTool se khong cham dung IELTS rubric vi rubric khong chi dem loi.
+
+Optimization:
+
+- Chay LanguageTool truoc.
+- Gom error summary:
+
+```json
+{
+  "article_errors": 5,
+  "subject_verb_agreement": 3,
+  "tense_errors": 4
+}
+```
+
+- Dua summary vao prompt.
+- LLM cham criterion va giai thich.
+
+## 5.6. Speaking criterion -> nen dung gi?
+
+| Criterion | Nen dung chinh | Thu vien/model phu | Co can AI API khong? | Ly do |
+| --- | --- | --- | --- | --- |
+| Fluency and Coherence | STT segments + rules + `strong_llm` | faster-whisper, pydub/librosa | Co neu can feedback tot | Can pause/duration/WPM + coherence cua noi dung |
+| Lexical Resource | `strong_llm` | spaCy/topic vocab list | Co | Can danh gia range, paraphrase, topic vocabulary |
+| Grammatical Range and Accuracy | LanguageTool + `strong_llm` | LanguageTool, spaCy | Co | Can loi grammar + range cau trong speech transcript |
+| Pronunciation | Speech assessment API | Azure Speech Assessment or equivalent; STT confidence/audio metrics fallback | Khong dung LLM text-only lam chinh | Pronunciation can audio-level model, LLM khong nghe/khong cham phat am that neu chi co transcript |
+
+### 5.6.1. Fluency and Coherence
+
+Best choice:
+
+```text
+faster-whisper/STT segments + rule metrics + strong_llm API
+```
+
+Local metrics:
+
+```text
+duration_seconds
+words_per_minute
+pause_count
+average_pause_length
+filler_word_count
+answer_length
+```
+
+Vi sao:
+
+- Fluency can audio timing metrics.
+- Coherence can LLM danh gia transcript co mach lac khong.
+
+Optimization:
+
+- Tinh WPM/pause local.
+- LLM chi nhan transcript + metrics + rubric.
+- Neu text-only answer, fluency score phai co limited confidence.
+
+### 5.6.2. Lexical Resource
+
+Best choice:
+
+```text
+strong_llm API + spaCy/topic vocabulary helper
+```
+
+Vi sao:
+
+- Speaking lexical resource can range, paraphrase, flexibility.
+- Local NLP dem tu lap/topic words nhanh nhung khong du final judgement.
+
+Optimization:
+
+- Detect repeated words local.
+- Extract topic vocabulary local.
+- LLM cham lexical score va feedback.
+
+### 5.6.3. Grammatical Range and Accuracy
+
+Best choice:
+
+```text
+LanguageTool + strong_llm API
+```
+
+Vi sao:
+
+- Transcript speech thuong co cau khong hoan chinh.
+- LanguageTool bat loi co ban.
+- LLM danh gia loi co anh huong communication khong va co range cau khong.
+
+Optimization:
+
+- Khong sua transcript qua muc truoc khi cham.
+- Giu transcript gan voi loi noi that.
+- Dua LanguageTool summary vao prompt nhu helper, khong phai final score.
+
+### 5.6.4. Pronunciation
+
+Best choice neu muon cham that:
+
+```text
+speech_assessment_api
+```
+
+Vi du:
+
+```text
+Azure Speech Assessment
+```
+
+Fallback MVP:
+
+```text
+faster-whisper confidence + audio metrics + limited-confidence estimate
+```
+
+Khong nen:
+
+```text
+LLM text-only -> pronunciation score chinh
+```
+
+Vi sao:
+
+- Pronunciation can audio signal.
+- Transcript khong du de biet stress, intonation, phoneme accuracy.
+
+MVP recommendation:
+
+- Neu chua tich hop speech assessment API, ghi ro:
+
+```text
+Pronunciation score is estimated with limited confidence based on transcript/audio metrics.
+```
+
+## 5.7. Bang chon nhanh cho MVP va Advanced
+
+| Criterion group | MVP choice | Advanced choice |
+| --- | --- | --- |
+| Writing Task Response/Achievement | strong_llm single-pass | criterion-specific strong_llm call |
+| Writing Coherence | strong_llm single-pass | strong_llm + paragraph/linking analysis |
+| Writing Lexical | strong_llm single-pass | strong_llm + spaCy/textstat/collocation signals |
+| Writing Grammar | strong_llm single-pass + LanguageTool optional | criterion-specific call + LanguageTool summary |
+| Speaking Fluency | text/transcript + strong_llm | STT segments + WPM/pause metrics + strong_llm |
+| Speaking Lexical | strong_llm single-pass | strong_llm + topic vocab analysis |
+| Speaking Grammar | strong_llm + LanguageTool optional | LanguageTool summary + criterion-specific call |
+| Speaking Pronunciation | limited estimate or no official-like score | Azure Speech Assessment or equivalent |
+
+## 5.8. Recommendation cuoi cung
+
+De toi uu performance va van sat tieu chi thuc te:
+
+```text
+Writing MVP:
+  LanguageTool optional precheck
+  + 1 strong LLM API call returning all 4 criterion scores
+  + backend computes/checks overall
+
+Speaking MVP:
+  Text answer or transcript
+  + 1 strong LLM API call for content criteria
+  + pronunciation limited-confidence note
+
+Speaking Advanced:
+  faster-whisper for transcript and timing
+  + pydub/librosa for audio metrics
+  + Azure Speech Assessment for pronunciation
+  + strong LLM API for fluency/coherence/lexical/grammar feedback
+```
+
 ## 6. Luong cham Writing chi tiet
 
 ```mermaid
