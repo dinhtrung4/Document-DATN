@@ -67,6 +67,133 @@ FastAPI lam:
 - Retry neu output sai schema.
 - Tra JSON ve Spring Boot.
 
+## 2.4. Nguyen tac chon API AI, local model hay thu vien
+
+Uu tien performance theo thu tu:
+
+```text
+1. Rule-based code neu bai toan co dap an/logic ro rang.
+2. SQL aggregation neu chi la thong ke/analytics.
+3. Thu vien local neu la NLP/audio/preprocessing.
+4. Local model neu task don gian, chap nhan quality trung binh, can giam chi phi.
+5. LLM API chi dung cho task can reasoning/ngon ngu chat luong cao.
+```
+
+Khong goi LLM API cho:
+
+- Cham Reading/Listening da co correct_answer.
+- Flashcard progress.
+- Grammar/vocabulary quiz scoring.
+- Dashboard analytics.
+- Recommendation item selection.
+- Validate JSON schema.
+- Word count, duration, simple text stats.
+
+Nen goi LLM API cho:
+
+- Sinh cau hoi Reading/Listening chat luong cao.
+- Cham Writing/Speaking theo rubric.
+- Feedback language tu nhien.
+- Speaking follow-up question.
+
+Nen dung local libraries cho:
+
+- JSON schema validation: Pydantic.
+- Grammar helper: LanguageTool.
+- Readability/text stats: textstat.
+- Keyword/basic NLP: spaCy.
+- Fuzzy evidence matching: rapidfuzz.
+- Audio duration/basic metrics: pydub/librosa.
+- Speech-to-text local: faster-whisper.
+
+Nen dung local model cho:
+
+- Draft vocabulary quiz.
+- Draft grammar exercise.
+- Draft Reading/Listening questions khi muon giam chi phi.
+- Demo offline.
+
+## 2.5. Bang chon cong nghe theo tung buoc pipeline
+
+| Buoc | Nen dung | Ly do performance |
+| --- | --- | --- |
+| Load source data | Spring Boot + PostgreSQL | Nhanh, query theo index |
+| Preprocess passage/transcript | Python libraries: textstat, spaCy optional | Nhe hon LLM, chay local |
+| Create AI generation request | Spring Boot | Chi ghi DB, khong can AI |
+| Build prompt | FastAPI string template | Nhanh, deterministic |
+| Generate Reading questions | LLM API fast/standard model; local Qwen/Llama optional | Can reasoning va distractors tot |
+| Generate Listening questions | LLM API fast/standard model; local Qwen/Llama optional | Can hieu transcript va tao question type |
+| Generate vocabulary quiz | Rule/template first; local model optional; LLM API last | Task don gian, khong can model manh |
+| Generate grammar exercise | Template/local model first; LLM API khi can da dang | Giam chi phi |
+| Validate AI JSON | Pydantic | Local, nhanh, chinh xac |
+| Evidence check | String match + rapidfuzz | Re hon LLM, deterministic |
+| Save generated content | Spring Boot + JPA | Backend so huu DB |
+| Admin review | UI + Spring Boot | Human quality gate |
+| Learner answer scoring | Spring Boot rule-based | Khong can AI, latency thap |
+| Writing word count | Java/Python basic code | Khong can AI |
+| Writing grammar precheck | LanguageTool optional | Local/helper, giam tai cho LLM |
+| Writing rubric grading | LLM API strong model; local model only fallback | Can judgement theo rubric |
+| Speaking transcription | faster-whisper local or Whisper API | STT chuyen dung tot hon LLM text |
+| Speaking fluency metrics | faster-whisper segments + pydub/librosa | Local, nhanh |
+| Speaking rubric grading | LLM API strong model; local model only fallback | Can feedback/rubric reasoning |
+| Pronunciation advanced | Azure Speech Assessment or equivalent | LLM khong du cham phat am that |
+| Recommendation analytics | SQL + rule engine | Nhanh, re, explainable |
+| Study plan natural text | Template first; cheap LLM optional | Khong can moi lan dashboard |
+| Cache grading | Spring Boot + DB/Redis optional | Tranh goi AI lap lai |
+
+## 2.6. Model/API profile khuyen nghi
+
+Thay vi hard-code mot model, nen cau hinh theo profile:
+
+```text
+mock_provider:
+  dev/test, khong ton chi phi
+
+cheap_fast_llm:
+  vocabulary quiz, grammar exercise, recommendation text
+
+standard_llm:
+  Reading/Listening question generation
+
+strong_llm:
+  Writing/Speaking rubric grading
+
+local_llm:
+  draft generation, offline demo, cost-saving mode
+
+stt_model:
+  faster-whisper local hoac speech-to-text API
+```
+
+Config goi y:
+
+```text
+AI_PROVIDER=api|local|mock
+AI_GENERATION_MODEL=standard_llm
+AI_GRADING_MODEL=strong_llm
+AI_CHEAP_MODEL=cheap_fast_llm
+AI_LOCAL_MODEL=qwen-or-llama-via-ollama
+AI_STT_PROVIDER=faster_whisper|whisper_api
+AI_TEMPERATURE_GENERATION=0.2-0.4
+AI_TEMPERATURE_GRADING=0.0-0.2
+```
+
+MVP performance recommendation:
+
+```text
+Generation:
+  single batch LLM call per source material, save DB, review once
+
+Grading:
+  single LLM call returns all criterion scores, backend computes/checks overall
+
+Analytics:
+  SQL + rule-based only
+
+Dev/test:
+  Mock AI provider
+```
+
 ## 3. Pipeline tong quan
 
 ```mermaid
@@ -206,6 +333,25 @@ generated_exercises.status = draft
 generated_questions.status = draft
 ```
 
+## 4.6. Performance-first implementation cho Reading
+
+| Step | Cong nghe nen dung | Ghi chu toi uu |
+| --- | --- | --- |
+| Load passage | Spring Boot + PostgreSQL index | Query theo `topic_id`, `level_id`, `status` |
+| Preprocess passage | textstat/spaCy optional | Chi dung neu can estimate difficulty/keywords |
+| Build prompt | FastAPI template | Deterministic, khong can AI |
+| Generate questions | `standard_llm` API; local LLM optional | Batch generate nhieu cau trong 1 call |
+| Validate JSON | Pydantic | Retry repair toi da 1 lan |
+| Check evidence | String contains + rapidfuzz | Khong goi LLM de check evidence |
+| Save questions | Spring Boot + JPA | Luu draft de admin review |
+| Learner scoring | Spring Boot rule-based | Khong goi AI khi learner lam bai |
+
+Khuyen nghi:
+
+- Neu uu tien chat luong: dung LLM API standard/strong cho generation.
+- Neu uu tien chi phi/demo: dung local model de generate draft, bat buoc admin review.
+- Khong dung LLM de cham Reading.
+
 ## 5. Pipeline generate cau hoi Listening
 
 ## 5.1. Muc tieu
@@ -265,6 +411,25 @@ Admin selects listening material
 - Neu co segments, nen co `timestamp_start` va `timestamp_end`.
 - Transcript chi hien sau khi learner nop bai.
 
+## 5.5. Performance-first implementation cho Listening
+
+| Step | Cong nghe nen dung | Ghi chu toi uu |
+| --- | --- | --- |
+| Store audio | File storage | PostgreSQL chi luu `audio_url` |
+| Store transcript | PostgreSQL text + transcript_segments | Tao segment de timestamp nhanh |
+| Preprocess transcript | Python basic/textstat optional | Khong can LLM |
+| Generate questions | `standard_llm` API; local LLM optional | Batch generate theo transcript |
+| Timestamp matching | transcript_segments + rapidfuzz | Match dap an voi segment local |
+| Validate JSON | Pydantic | Local validation |
+| Learner playback | React audio player | Audio stream tu storage |
+| Learner scoring | Spring Boot rule-based | Khong goi AI khi nop bai |
+
+Khuyen nghi:
+
+- AI khong can nghe audio trong MVP; dung transcript de generate.
+- Neu audio chua co transcript, dung STT truoc roi moi generate.
+- Chon local faster-whisper neu muon giam chi phi STT; chon STT API neu muon on dinh/deploy nhanh.
+
 ## 6. Pipeline generate Vocabulary quiz
 
 ## 6.1. Muc tieu
@@ -298,6 +463,22 @@ Admin selects topic/level
 - Collocation.
 - Match word with definition.
 
+## 6.4. Performance-first implementation cho Vocabulary
+
+| Step | Cong nghe nen dung | Ghi chu toi uu |
+| --- | --- | --- |
+| Load words | Spring Boot + PostgreSQL | Filter topic/level/status |
+| Flashcard | Rule-based | Khong can AI |
+| Spaced repetition | Java service | Tinh `next_review_at` local |
+| Quiz generation | Template first; local LLM optional | LLM API chi dung khi can da dang |
+| Quiz scoring | Spring Boot rule-based | So sanh correct_answer |
+| Progress analytics | SQL aggregation | Khong can AI |
+
+Khuyen nghi:
+
+- Vocabulary la noi nen tranh LLM API nhieu nhat.
+- Bat dau bang template-based quiz vi nhanh va re.
+
 ## 7. Pipeline generate Grammar exercise
 
 ## 7.1. Muc tieu
@@ -325,6 +506,22 @@ Admin selects grammar topic
 -> Spring Boot scores rule-based
 -> Update user_grammar_progress
 ```
+
+## 7.3. Performance-first implementation cho Grammar
+
+| Step | Cong nghe nen dung | Ghi chu toi uu |
+| --- | --- | --- |
+| Store lesson | PostgreSQL | Admin-authored content |
+| Generate exercise | Template/local LLM first | API LLM chi khi can sinh bai da dang |
+| Grammar helper | LanguageTool optional | Phat hien loi co ban local |
+| Validate exercise | Pydantic/Java validation | Dap an va explanation bat buoc |
+| Learner scoring | Spring Boot rule-based | Khong goi AI |
+| Progress analytics | SQL + rules | Recommend grammar topic |
+
+Khuyen nghi:
+
+- Dung LanguageTool cho grammar error hints co ban.
+- Dung LLM cho explanation tu nhien neu can, nhung sinh truoc va luu DB.
 
 ## 8. Pipeline admin review va publish
 
@@ -533,6 +730,30 @@ Multi-pass scoring -> one focused call per criterion -> backend aggregates
 - If essay too short, Task Response/Task Achievement should not be too high.
 - If many grammar errors, grammar score should not be too high.
 
+## 10.6. Performance-first implementation cho Writing grading
+
+| Step | Cong nghe nen dung | Ghi chu toi uu |
+| --- | --- | --- |
+| Save essay | Spring Boot + PostgreSQL | Luu truoc khi goi AI de khong mat bai |
+| Word count | Java basic code | Khong can AI |
+| Grammar precheck | LanguageTool optional | Ho tro AI, khong thay grading |
+| Readability/stats | textstat optional | Co the dung lam metadata |
+| Load rubric | PostgreSQL | Rubric versioned |
+| Build prompt | FastAPI template | Include rubric + schema |
+| Grade criteria | `strong_llm` API | MVP: 1 call tra 4 criterion |
+| Advanced criterion grading | Multi-pass LLM optional | Chat luong cao hon nhung cham/ton hon |
+| Validate JSON | Pydantic | Bat buoc |
+| Score logic validation | Spring Boot | Range/step/overall guardrails |
+| Cache | DB cache key; Redis optional | Tranh cham lai input giong nhau |
+| Save result | Spring Boot + PostgreSQL | Luu `writing_submission_id` |
+
+Khuyen nghi performance:
+
+- MVP dung single-pass grading: 1 LLM call tra tat ca criterion.
+- Khong dung multi-pass mac dinh vi ton 4x request va latency cao.
+- Dung LanguageTool/textstat nhu helper local de tang signal ma khong ton API.
+- Backend tinh/kiem tra overall, khong de model tu quyet het.
+
 ## 11. Pipeline cham Speaking theo rubric
 
 ## 11.1. Muc tieu
@@ -594,6 +815,29 @@ Pronunciation note:
 
 - If only transcript exists, pronunciation is limited-confidence estimate.
 - For real pronunciation scoring, use speech assessment API such as Azure Speech Assessment.
+
+## 11.5. Performance-first implementation cho Speaking grading
+
+| Step | Cong nghe nen dung | Ghi chu toi uu |
+| --- | --- | --- |
+| Text answer MVP | Spring Boot + FastAPI grading | Nhanh, khong can STT |
+| Audio upload | File storage | DB chi luu `audio_url` |
+| Transcription | faster-whisper local or Whisper API | Local re hon, API de deploy hon |
+| Audio duration | pydub/librosa | Local |
+| Fluency metrics | faster-whisper segments + rules | Pause/duration/WPM local |
+| Grammar helper | LanguageTool optional | Ho tro grading |
+| Grade criteria | `strong_llm` API | Can reasoning/feedback |
+| Pronunciation basic | STT confidence/audio metrics | Limited confidence |
+| Pronunciation advanced | Azure Speech Assessment or equivalent | Chi dung neu can diem phat am tot |
+| Follow-up question | `cheap_fast_llm` or same grading response | Co the tao chung trong grading call |
+| Cache | Hash question + transcript + rubric | Tranh cham lai |
+
+Khuyen nghi performance:
+
+- MVP lam text answer truoc.
+- Neu dung audio, transcribe async neu file dai.
+- Speaking follow-up co the generate trong cung grading call de giam request.
+- Pronunciation advanced de sau vi ton chi phi va phu thuoc provider.
 
 ## 12. Pipeline speech-to-text
 
@@ -697,6 +941,24 @@ If speaking answer duration < threshold
 AI chi dung de viet recommendation thanh study plan tu nhien.
 
 Khong goi AI moi lan learner mo dashboard.
+
+## 13.6. Performance-first implementation cho Recommendation
+
+| Step | Cong nghe nen dung | Ghi chu toi uu |
+| --- | --- | --- |
+| Aggregate scores | SQL queries/materialized view optional | Nhanh, explainable |
+| Detect weak question type | Spring Boot rules | Khong can AI |
+| Detect grammar weakness | Count `grammar_errors` JSONB | Co index GIN neu query nhieu |
+| Detect vocabulary weakness | SQL on progress/quiz score | Khong can AI |
+| Select recommended items | Rule engine | Deterministic |
+| Generate natural text | Template first; `cheap_fast_llm` optional | Cache theo ngay/lan thay doi |
+| Save recommendation | PostgreSQL | Khong tao moi moi lan open dashboard |
+
+Khuyen nghi:
+
+- Dashboard nen chi query cached/aggregated data.
+- Chi tao recommendation moi khi co attempt/submission moi hoac user bam regenerate.
+- Khong dung LLM de quyet dinh item can hoc; LLM chi dien dat neu can.
 
 ## 14. Cache pipeline
 

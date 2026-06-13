@@ -143,6 +143,25 @@ Use rule-based logic:
 
 Do not train/fine-tune model in MVP unless dataset/GPU/evaluation are ready.
 
+Performance-first rule:
+
+```text
+1. Rule-based code if logic/answer is deterministic.
+2. SQL aggregation if task is analytics.
+3. Local library if task is NLP/audio preprocessing.
+4. Local model if task is simple generation/offline demo.
+5. LLM API only for high-quality language reasoning/grading.
+```
+
+Per-pipeline optimized choices:
+
+- Reading/Listening generation: standard LLM API for quality; local model optional for draft; batch generate; save DB.
+- Reading/Listening scoring: Spring Boot rule-based only.
+- Vocabulary/Grammar: template/rule-based first; local model optional; avoid API by default.
+- Writing grading: strong LLM API, single-pass criterion scoring for MVP; LanguageTool/textstat optional helpers.
+- Speaking grading: faster-whisper/STT for transcript, pydub/librosa for metrics, strong LLM API for rubric grading.
+- Recommendation: SQL + rule engine; AI optional only to write natural language study plan.
+
 ## 6. Database decisions
 
 Core groups:
