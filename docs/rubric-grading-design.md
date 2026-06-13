@@ -462,6 +462,346 @@ Speaking Advanced:
   + strong LLM API for fluency/coherence/lexical/grammar feedback
 ```
 
+## 5.9. Grading co phu thuoc hoan toan vao AI API khong?
+
+Khong. Phan cham rubric nen la **hybrid grading engine**, khong phai "AI API tu cham tat ca".
+
+Chia vai tro:
+
+| Thanh phan | Vai tro |
+| --- | --- |
+| Spring Boot | Luu submission, load rubric, tao cache key, validate score, tinh/check overall, luu result |
+| PostgreSQL | Luu rubric version, prompt version, grading history, submission versions |
+| FastAPI | Build prompt, goi provider, validate JSON bang Pydantic |
+| Local libraries | Word count, diff, grammar precheck, readability, audio metrics |
+| LLM API/local model | Criterion judgement cho cac diem can hieu ngu nghia/rubric |
+| Speech assessment API | Pronunciation scoring neu can chuan hon |
+
+Nhung phan **khong nen dung AI API**:
+
+- Word count.
+- Paragraph count.
+- Sentence count.
+- Text diff.
+- Cache check.
+- Overall band calculation.
+- Score range/step validation.
+- LanguageTool grammar precheck.
+- Audio duration/WPM/pause metrics.
+
+Nhung phan **nen dung LLM API hoac local model**:
+
+- Task Response/Task Achievement judgement.
+- Coherence/Cohesion judgement.
+- Lexical quality judgement.
+- Grammar range and error impact judgement.
+- Speaking coherence/lexical/grammar feedback.
+
+Nhung phan **khong nen dung LLM text-only lam chinh**:
+
+- Pronunciation scoring. Neu can diem phat am that, dung speech assessment API.
+
+## 5.10. Chien luoc cham lai khi user chi sua mot chut
+
+Van de:
+
+```text
+Learner nhan feedback -> sua mot vai cau/tu -> submit lai
+```
+
+Neu moi lan deu full regrade bang strong LLM:
+
+- Ton chi phi.
+- Tang latency.
+- Co the diem dao dong do model variance.
+
+Neu chi dung ket qua cu:
+
+- Khong phan anh dung loi da sua.
+- Learner khong thay tien bo.
+
+Vi vay nen dung **revision-aware grading strategy**.
+
+### 5.10.1. Luu submission theo version
+
+Nen bo sung metadata cho submission:
+
+```text
+writing_submissions:
+  parent_submission_id
+  revision_number
+  content_hash
+  diff_from_previous_json
+
+speaking_turns:
+  parent_turn_id optional
+  revision_number optional
+  content_hash
+
+ai_grading_results:
+  grading_mode: full / partial / cache_reuse / local_quick_check
+  cache_key
+  based_on_grading_result_id
+  rubric_version
+  prompt_version
+```
+
+MVP co the chua can them het vao database, nhung nen thiet ke service theo huong nay.
+
+### 5.10.2. Buoc 1 - Exact cache hit
+
+Neu user submit y het noi dung da cham:
+
+```text
+content_hash moi == content_hash cu
+```
+
+Thi:
+
+```text
+Khong goi AI
+Tra lai ai_grading_result cu
+grading_mode = cache_reuse
+```
+
+### 5.10.3. Buoc 2 - Tinh muc do thay doi
+
+Dung local diff, khong dung AI.
+
+Thu vien/cach lam:
+
+- Java: java-diff-utils hoac custom diff.
+- Python: difflib.
+- Fuzzy similarity: rapidfuzz.
+
+Metrics:
+
+```text
+changed_token_ratio
+changed_sentence_ratio
+word_count_delta_ratio
+paragraph_structure_changed
+grammar_error_delta
+lexical_change_count
+```
+
+Phan loai:
+
+```text
+exact_same:
+  0% changed
+
+minor_revision:
+  changed_token_ratio <= 10%
+  word_count_delta_ratio <= 10%
+  paragraph_structure_changed = false
+
+moderate_revision:
+  10% < changed_token_ratio <= 30%
+  hoac co sua/chen mot so cau
+
+major_revision:
+  changed_token_ratio > 30%
+  hoac thay doi paragraph structure
+  hoac them/xoa y lon
+```
+
+### 5.10.4. Buoc 3 - Xac dinh criterion bi anh huong
+
+Dung diff + local analysis de suy ra criterion can cham lai.
+
+| Loai thay doi | Criterion co the bi anh huong | Cach xu ly |
+| --- | --- | --- |
+| Sua loi grammar nho | Grammatical Range and Accuracy | Chay LanguageTool lai, partial regrade grammar |
+| Doi tu/collocation | Lexical Resource | Partial regrade lexical |
+| Them example/supporting idea | Task Response/Achievement, Coherence | Regrade task + coherence |
+| Sap xep lai paragraph | Coherence and Cohesion | Regrade coherence, co the task |
+| Viet lai nhieu doan | Tat ca criteria | Full regrade |
+| Speaking sua transcript nho | Grammar/Lexical/Coherence tuy noi dung | Partial hoac full theo changed ratio |
+
+### 5.10.5. Chon grading mode
+
+#### Mode A - Cache reuse
+
+Dieu kien:
+
+```text
+No content change
+```
+
+Xu ly:
+
+```text
+Return old grading result
+No AI call
+```
+
+#### Mode B - Local-only quick feedback
+
+Dieu kien:
+
+```text
+User chi sua grammar/spelling rat nho
+Va chi can quick feedback
+```
+
+Xu ly:
+
+```text
+Run LanguageTool/text stats
+Show local improvement feedback
+Do not update official estimated band
+```
+
+Dung cho:
+
+- Giai thich nhanh rang loi grammar da giam.
+- Khong ton AI.
+
+#### Mode C - Partial regrade
+
+Dieu kien:
+
+```text
+minor_revision hoac moderate_revision
+Affected criteria ro rang
+```
+
+Xu ly:
+
+```text
+Keep old unaffected criterion scores
+Regrade only affected criteria
+Recompute/check overall
+Cap score movement, usually max +/- 0.5 for minor revision
+```
+
+Vi du:
+
+```text
+User chi sua article errors va subject-verb agreement.
+-> Re-run LanguageTool.
+-> Send previous grammar feedback + changed sentences + full essay context to LLM.
+-> Regrade Grammatical Range and Accuracy only.
+-> Keep Task Response, Coherence, Lexical old scores.
+-> Recompute overall.
+```
+
+Model:
+
+```text
+standard_llm or strong_llm depending on importance
+```
+
+Khuyen nghi:
+
+- Dung `strong_llm` neu result hien thi nhu grading chinh.
+- Dung `standard_llm` neu chi la revision suggestion.
+
+#### Mode D - Full regrade
+
+Dieu kien:
+
+```text
+major_revision
+Hoac user bam "Regrade full"
+Hoac prompt/task changed
+Hoac paragraph structure changed nhieu
+Hoac partial regrade confidence low
+```
+
+Xu ly:
+
+```text
+Run full rubric grading again
+All criteria re-evaluated
+New ai_grading_result
+```
+
+### 5.10.6. Decision tree
+
+```mermaid
+flowchart TD
+    A[User resubmits answer] --> B[Compute content hash]
+    B --> C{Same hash as previous?}
+    C -->|Yes| D[Return cached grading]
+    C -->|No| E[Compute diff metrics]
+    E --> F{Major change?}
+    F -->|Yes| G[Full regrade]
+    F -->|No| H{Only local grammar/spelling quick check?}
+    H -->|Yes| I[Local-only feedback, no band update]
+    H -->|No| J[Detect affected criteria]
+    J --> K{Affected criteria clear and change minor/moderate?}
+    K -->|Yes| L[Partial regrade affected criteria]
+    K -->|No| G
+    L --> M[Recompute/check overall]
+    G --> M
+    M --> N[Save new grading result]
+```
+
+### 5.10.7. Guardrails cho partial regrade
+
+Partial regrade de tiet kiem chi phi nhung can guardrails:
+
+- Khong dung partial regrade neu bai thay doi qua nhieu.
+- Khong de diem overall nhay qua lon voi minor revision.
+- Neu affected criteria khong ro, full regrade.
+- Neu user can diem final/mock test, full regrade.
+- Neu AI confidence/validation fail, full regrade hoac retry.
+
+Cap movement goi y:
+
+```text
+minor_revision:
+  criterion score change max +/- 0.5
+
+moderate_revision:
+  criterion score change max +/- 1.0 unless full regrade
+```
+
+### 5.10.8. Chien luoc hien thi cho learner
+
+Nen tach hai nut:
+
+```text
+Quick check changes:
+  Re nhanh, local/partial, phu hop khi sua nho.
+
+Full regrade:
+  Goi AI cham lai toan bo theo rubric.
+```
+
+Hien thi ro:
+
+```text
+This is a partial re-evaluation based on your recent changes.
+For a full estimated IELTS band score, run full regrade.
+```
+
+### 5.10.9. Recommendation cho MVP
+
+MVP nen lam:
+
+```text
+1. Exact cache reuse.
+2. Full regrade for changed submissions.
+3. Store previous grading history.
+4. Add diff display for learner.
+```
+
+Neu con pham vi, them:
+
+```text
+5. Minor edit detection.
+6. Local-only quick feedback using LanguageTool.
+7. Partial regrade affected criteria.
+```
+
+Ly do:
+
+- MVP don gian va dang tin hon.
+- Partial regrade can nhieu guardrail de khong sai lech diem.
+
 ## 6. Luong cham Writing chi tiet
 
 ```mermaid

@@ -270,6 +270,15 @@ Advanced grading:
 - Multi-pass criterion-specific LLM calls.
 - Speech assessment API for pronunciation.
 
+Revision/regrade strategy:
+
+- Grading is not fully AI API based; it is hybrid: local analysis + LLM judgement + backend validation.
+- If content hash is unchanged, reuse cached grading.
+- If user only makes tiny grammar/spelling edits, allow local-only quick feedback with LanguageTool/text stats and do not update official estimated band.
+- If edit is minor/moderate and affected criteria are clear, partial regrade only affected criteria.
+- If edit is major, structure changes, task changes, or learner requests final/mock-test score, run full regrade.
+- MVP recommendation: cache exact repeats, full regrade changed submissions, store grading history; add partial regrade later.
+
 ## 8. Personalization decisions
 
 Core recommendation should not depend on AI API.
