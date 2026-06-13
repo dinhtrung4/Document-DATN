@@ -34,15 +34,19 @@ Doc theo thu tu sau de nam he thong tu tong quan den chi tiet:
    - Tong hop cong nghe, model, thu vien, API va cach lam tung module.
    - File nay phu hop de doc nhanh truoc khi bat dau implementation.
 
-8. `ai-service-design.md`
+8. `pipeline-design.md`
+   - Mo ta cac pipeline chinh: generate cau hoi, review/publish, learner practice, grading, STT, recommendation.
+   - File nay nen doc truoc khi thiet ke API/sequence diagram chi tiet.
+
+9. `ai-service-design.md`
    - Thiet ke Python FastAPI AI Service.
    - Co provider adapter, prompt/schema validation, cache, workflow, cost control.
 
-9. `rubric-grading-design.md`
+10. `rubric-grading-design.md`
    - Thiet ke chi tiet grading engine cho Writing/Speaking theo IELTS rubric.
    - Co criterion-level scoring, backend aggregation, validation, calibration.
 
-10. `ai-context-summary.md`
+11. `ai-context-summary.md`
     - Tom tat ngan gon cho AI/agent doc lai o cac phien lam viec sau.
     - Dung de tiet kiem token va tranh doc lai toan bo tai lieu dai.
 
@@ -55,6 +59,7 @@ Doc theo thu tu sau de nam he thong tu tong quan den chi tiet:
 | Thiet ke database | `database-design.md`, `dbdiagram-erd.dbml` |
 | Code backend entity | `springboot-entities.md` |
 | Chon cong nghe va plan code | `tech-stack-and-roadmap.md`, `technology-ai-summary.md` |
+| Hieu pipeline xu ly | `pipeline-design.md` |
 | Thiet ke AI service | `ai-service-design.md` |
 | Thiet ke cham Writing/Speaking | `rubric-grading-design.md` |
 | Context ngan cho AI lan sau | `ai-context-summary.md` |

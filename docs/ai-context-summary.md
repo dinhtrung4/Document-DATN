@@ -107,6 +107,15 @@ Recommendation:
   SQL + rule-based analytics core -> optional AI for natural language study plan
 ```
 
+Canonical pipeline file:
+
+- `docs/pipeline-design.md`
+  - Content generation pipeline.
+  - Learning/scoring pipeline.
+  - Rubric grading pipeline.
+  - STT pipeline.
+  - Recommendation pipeline.
+
 ## 5. Model/API decisions
 
 Use LLM API for high quality tasks:
@@ -272,6 +281,7 @@ Read these if more detail is needed:
 - `docs/springboot-entities.md`: Spring Boot entity mapping.
 - `docs/tech-stack-and-roadmap.md`: tech stack and roadmap.
 - `docs/technology-ai-summary.md`: technology/model/API summary.
+- `docs/pipeline-design.md`: generation, scoring, grading and recommendation pipelines.
 - `docs/ai-service-design.md`: AI service design.
 - `docs/rubric-grading-design.md`: rubric grading engine.
 

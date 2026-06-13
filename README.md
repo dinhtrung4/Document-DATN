@@ -18,6 +18,7 @@ Bat dau tu:
 - Thiet ke PostgreSQL va ERD dbdiagram.io.
 - Thiet ke Spring Boot entities.
 - Tech stack va lo trinh trien khai.
+- Pipeline generate cau hoi, lam bai, cham diem va recommendation.
 - Thiet ke FastAPI AI Service.
 - Tong hop cong nghe/model/API/thu vien.
 - Thiet ke cham Writing/Speaking theo IELTS rubric.
