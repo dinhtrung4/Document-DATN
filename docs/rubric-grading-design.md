@@ -390,7 +390,7 @@ Optimization:
 
 ### 5.6.4. Pronunciation
 
-Best choice neu muon cham that:
+Best choice neu muon cham nhanh bang service co san:
 
 ```text
 speech_assessment_api
@@ -400,6 +400,25 @@ Vi du:
 
 ```text
 Azure Speech Assessment
+```
+
+Best local/research-grade pipeline:
+
+```text
+Audio
+-> WhisperX transcript + word timestamps
+-> G2P expected phonemes
+-> forced alignment boundaries
+-> phoneme recognizer actual probabilities
+-> feature extraction
+-> deterministic scoring engine
+-> LLM feedback generator
+```
+
+Chi tiet xem:
+
+```text
+docs/speaking-pronunciation-pipeline.md
 ```
 
 Fallback MVP:
@@ -438,7 +457,7 @@ Pronunciation score is estimated with limited confidence based on transcript/aud
 | Speaking Fluency | text/transcript + strong_llm | STT segments + WPM/pause metrics + strong_llm |
 | Speaking Lexical | strong_llm single-pass | strong_llm + topic vocab analysis |
 | Speaking Grammar | strong_llm + LanguageTool optional | LanguageTool summary + criterion-specific call |
-| Speaking Pronunciation | limited estimate or no official-like score | Azure Speech Assessment or equivalent |
+| Speaking Pronunciation | limited estimate or no official-like score | WhisperX + G2P + forced alignment + phoneme recognizer, or Azure Speech Assessment |
 
 ## 5.8. Recommendation cuoi cung
 
@@ -458,7 +477,8 @@ Speaking MVP:
 Speaking Advanced:
   faster-whisper for transcript and timing
   + pydub/librosa for audio metrics
-  + Azure Speech Assessment for pronunciation
+  + WhisperX/G2P/forced alignment/phoneme recognizer for pronunciation
+  + Azure Speech Assessment optional as cloud API alternative
   + strong LLM API for fluency/coherence/lexical/grammar feedback
 ```
 

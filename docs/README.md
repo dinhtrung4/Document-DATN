@@ -46,7 +46,11 @@ Doc theo thu tu sau de nam he thong tu tong quan den chi tiet:
    - Thiet ke chi tiet grading engine cho Writing/Speaking theo IELTS rubric.
    - Co criterion-level scoring, backend aggregation, validation, calibration.
 
-11. `ai-context-summary.md`
+11. `speaking-pronunciation-pipeline.md`
+    - Pipeline chuyen sau cho pronunciation: WhisperX, G2P, forced alignment, phoneme recognizer, feature extraction, scoring engine.
+    - Dung khi muon danh gia Speaking pronunciation chinh xac hon transcript-only.
+
+12. `ai-context-summary.md`
     - Tom tat ngan gon cho AI/agent doc lai o cac phien lam viec sau.
     - Dung de tiet kiem token va tranh doc lai toan bo tai lieu dai.
 
@@ -62,6 +66,7 @@ Doc theo thu tu sau de nam he thong tu tong quan den chi tiet:
 | Hieu pipeline xu ly | `pipeline-design.md` |
 | Thiet ke AI service | `ai-service-design.md` |
 | Thiet ke cham Writing/Speaking | `rubric-grading-design.md` |
+| Thiet ke pronunciation Speaking | `speaking-pronunciation-pipeline.md` |
 | Context ngan cho AI lan sau | `ai-context-summary.md` |
 
 ## 3. Quyet dinh thiet ke da chot

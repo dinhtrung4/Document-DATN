@@ -22,6 +22,7 @@ Tai lieu nay tiep noi cac tai lieu:
 - `docs/ai-service-design.md`
 - `docs/technology-ai-summary.md`
 - `docs/pipeline-design.md`
+- `docs/speaking-pronunciation-pipeline.md`
 - `docs/ai-context-summary.md`
 
 ## 2. Dinh huong chon cong nghe

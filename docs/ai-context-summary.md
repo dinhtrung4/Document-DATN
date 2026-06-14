@@ -257,7 +257,26 @@ Criterion technology choices:
 - Speaking Fluency/Coherence: faster-whisper segments/audio metrics + strong LLM API.
 - Speaking Lexical Resource: strong LLM API + topic vocabulary signals optional.
 - Speaking Grammar Range/Accuracy: LanguageTool + strong LLM API.
-- Speaking Pronunciation: speech assessment API such as Azure Speech Assessment for real scoring; transcript-only LLM is limited-confidence fallback.
+- Speaking Pronunciation: preferred advanced local pipeline is WhisperX + G2P + forced alignment + phoneme recognizer + feature extraction + scoring engine; Azure Speech Assessment is a cloud API alternative; transcript-only LLM is limited-confidence fallback.
+
+Pronunciation pipeline canonical doc:
+
+- `docs/speaking-pronunciation-pipeline.md`
+
+Pronunciation advanced flow:
+
+```text
+Audio
+-> preprocessing
+-> WhisperX transcript + word timestamps
+-> text normalization
+-> G2P expected phonemes
+-> forced alignment phoneme/syllable boundaries
+-> phoneme recognizer actual probabilities
+-> feature extraction
+-> scoring engine
+-> LLM feedback generator
+```
 
 MVP grading:
 
@@ -334,6 +353,7 @@ Read these if more detail is needed:
 - `docs/pipeline-design.md`: generation, scoring, grading and recommendation pipelines.
 - `docs/ai-service-design.md`: AI service design.
 - `docs/rubric-grading-design.md`: rubric grading engine.
+- `docs/speaking-pronunciation-pipeline.md`: advanced speaking pronunciation assessment pipeline.
 
 ## 11. Next recommended artifact
 

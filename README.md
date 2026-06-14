@@ -22,3 +22,4 @@ Bat dau tu:
 - Thiet ke FastAPI AI Service.
 - Tong hop cong nghe/model/API/thu vien.
 - Thiet ke cham Writing/Speaking theo IELTS rubric.
+- Pipeline danh gia pronunciation Speaking nang cao.

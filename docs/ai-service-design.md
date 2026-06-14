@@ -10,6 +10,12 @@ Phan cham diem chi tiet theo IELTS rubric duoc mo ta rieng tai:
 docs/rubric-grading-design.md
 ```
 
+Phan pronunciation Speaking nang cao duoc mo ta rieng tai:
+
+```text
+docs/speaking-pronunciation-pipeline.md
+```
+
 Muc tieu cua AI:
 
 - Tao cau hoi, dap an va giai thich tu du lieu goc trong database.

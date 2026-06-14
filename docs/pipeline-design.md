@@ -814,7 +814,21 @@ sequenceDiagram
 Pronunciation note:
 
 - If only transcript exists, pronunciation is limited-confidence estimate.
-- For real pronunciation scoring, use speech assessment API such as Azure Speech Assessment.
+- For a deeper local/research-grade pronunciation pipeline, use `docs/speaking-pronunciation-pipeline.md`.
+- The recommended advanced approach is:
+
+```text
+Audio
+-> preprocessing
+-> WhisperX transcript + word timestamps
+-> text normalization
+-> G2P expected phonemes
+-> forced alignment phoneme/syllable boundaries
+-> phoneme recognizer actual probabilities
+-> feature extraction
+-> scoring engine
+-> LLM feedback generator
+```
 
 ## 11.5. Performance-first implementation cho Speaking grading
 
@@ -827,8 +841,9 @@ Pronunciation note:
 | Fluency metrics | faster-whisper segments + rules | Pause/duration/WPM local |
 | Grammar helper | LanguageTool optional | Ho tro grading |
 | Grade criteria | `strong_llm` API | Can reasoning/feedback |
-| Pronunciation basic | STT confidence/audio metrics | Limited confidence |
-| Pronunciation advanced | Azure Speech Assessment or equivalent | Chi dung neu can diem phat am tot |
+| Pronunciation basic | WhisperX/faster-whisper + pydub/librosa | Limited confidence |
+| Pronunciation advanced local | WhisperX + G2P + forced alignment + phoneme recognizer | Chinh xac hon, co chieu sau ky thuat |
+| Pronunciation API option | Azure Speech Assessment or equivalent | De trien khai hon, ton chi phi API |
 | Follow-up question | `cheap_fast_llm` or same grading response | Co the tao chung trong grading call |
 | Cache | Hash question + transcript + rubric | Tranh cham lai |
 
@@ -837,7 +852,7 @@ Khuyen nghi performance:
 - MVP lam text answer truoc.
 - Neu dung audio, transcribe async neu file dai.
 - Speaking follow-up co the generate trong cung grading call de giam request.
-- Pronunciation advanced de sau vi ton chi phi va phu thuoc provider.
+- Pronunciation advanced local nen chay async va cache theo audio hash.
 
 ## 12. Pipeline speech-to-text
 

@@ -6,6 +6,12 @@ Tai lieu lien quan den cham diem theo IELTS rubric:
 docs/rubric-grading-design.md
 ```
 
+Tai lieu lien quan den pronunciation Speaking nang cao:
+
+```text
+docs/speaking-pronunciation-pipeline.md
+```
+
 ## 1. Kien truc tong the duoc chot
 
 Kien truc nen dung:
@@ -59,6 +65,7 @@ Ly do:
 | Local LLM option | Ollama/vLLM/llama.cpp | Chay model da train san local |
 | STT | Whisper/faster-whisper hoac Whisper API | Chuyen audio thanh text |
 | Audio processing | pydub, librosa | Xu ly audio co ban |
+| Pronunciation advanced | WhisperX, G2P, forced alignment, phoneme recognizer | Tao pronunciation metrics tu audio |
 | NLP helper | spaCy, textstat, LanguageTool | Ho tro grammar/readability/keyword |
 | Storage | Local storage, S3-compatible, Cloudinary | Luu audio/image |
 | Backend tests | JUnit, Mockito, Testcontainers | Test service/repository/API |
